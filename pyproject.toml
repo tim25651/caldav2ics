@@ -1,0 +1,159 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# pyproject-tools
+
+[project]
+name = "caldav2ics"
+version = "0.0.1"
+dependencies = [
+    "caldav",
+    "icalendar",
+    "msgspec",
+    "tomli_w",
+    "typing_extensions",
+]
+requires-python = ">=3.9"
+authors = [
+    {name = "Tim Hörmann", email = "pypi@audivir.de"},
+]
+description = "Cache CalDAV calendars in static .ICS files."
+readme = "README.md"
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["coverage[toml]", "mypy", "pylint", "pytest"]
+
+[project.scripts]
+caldav2ics = "caldav2ics:main"
+
+[tool.setuptools]
+py-modules = ["caldav2ics"]
+
+
+# pyproject-tools
+
+[tool.mypy]
+python_version = "3.10"
+enable_error_code = """type-arg,no-untyped-def,redundant-cast,redundant-self,comparison-overlap,
+                    no-untyped-call,no-any-return,no-any-unimported,unreachable,redundant-expr,
+                    possibly-undefined,truthy-bool,truthy-iterable,ignore-without-code,
+                    unused-awaitable,unused-ignore,explicit-override,unimported-reveal"""
+disable_error_code = "import-untyped"
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+exclude = ["build", "docs"]
+
+[tool.coverage.run]
+source = ["caldav2ics.py"]
+command_line = "-m pytest"
+branch = true
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", 'if __name__ == "__main__":']
+fail_under = 100
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+log_cli_level = "INFO"
+filterwarnings = [
+  "error",
+  "ignore::pytest.PytestCacheWarning",
+  "ignore::DeprecationWarning",
+]
+testpaths = ["tests"]
+
+[tool.vulture]
+ignore_names = ["_*", "unused_*"]
+paths = [".whitelist", "caldav2ics.py"]
+make_whitelist = true
+sort_by_size = true
+verbose = false
+
+[tool.ruff]
+fix = true
+show-fixes = true
+
+exclude = [".git", ".idea", ".mypy_cache", ".tox", ".venv", ".nox"]
+
+target-version = "py310"
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+dummy-variable-rgx = "^(dummy_.*|unused_.*|_)$"
+
+select = ["ALL"]
+
+fixable = ["ALL"]
+
+ignore = [
+  "ISC001", # implicit-str-concat
+  "COM812", # missing-trailing-comma
+  # ALLOW PICKLE USE
+  "S301", # `pickle` and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue
+  # IGNORE TODO
+  "TD002",  # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+  "TD003",  # Missing issue link on the line following this TODO
+  "FIX002", # Line contains TODO, consider resolving the issue
+  "FBT001", # Boolean-typed positional argument in function definition
+  "FBT002", # Boolean default positional argument
+  "FBT003", # Boolean positional value in function call
+  # "T201",  # `print` found
+  "NPY002", # Replace legacy `np.random.permutation` call with `np.random.Generator.permutation`
+  "ANN401", # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
+  # EXCEPTIONS
+  "EM101",  # Exception must not use a string literal, assign to variable first
+  "EM102",  # Exception must not use an f-string literal, assign to variable first
+  "TRY003", # Avoid specifying long messages outside the exception class
+  "TRY300", # Use of else blocks in try/except
+  # DOCSTRINGS
+  #"D102",  # Missing docstring in public method
+  #"D103",  # Missing docstring in public function
+  "D105", # Missing docstring in magic method
+  # "D107",  # Missing docstring in `__init__`
+  #"D415",  # First line should end with a period, question mark, or exclamation point
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+# Stub files for C extensions are allowed to have docstrings and overwrite __doc__, __version__, etc.
+"_*.pyi" = ["PYI021", "A"]
+
+# conf.py automatically created by Sphinx
+"docs/conf.py" = ["INP001", "D100", "ERA001", "A"]
+"noxfile.py" = ["INP001"]
+
+# Test files do not need to have docstrings at each test function
+# S101: assert, PLR2004: magic value comparison, T20: print statements
+"**/test_*.py" = ["INP001", "PLR2004", "S101", "D101", "D102", "D103", "T20"]
+"tests/**" = ["INP001", "PLR2004", "S101", "D101", "D102", "D103", "T20"]
