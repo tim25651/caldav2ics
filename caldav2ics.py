@@ -46,7 +46,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import msgspec
-import requests
+import requests.auth
 from caldav.davclient import DAVClient
 from caldav.objects import SynchronizableCalendarObjectCollection
 from icalendar import Calendar, Event
@@ -57,37 +57,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-class Config(TypedDict):
-    """Config file type."""
-
-    url: str
-    user: str
-    save_dir: str
-
-
-def remove_passwd(elem: SynchronizableCalendarObjectCollection) -> None:
-    """Remove password from `elem`."""
-    client: DAVClient = elem.calendar.client
-    client.auth = None
-    client.password = None
-
-
-@contextmanager
-def temp_passwd(
-    elem: SynchronizableCalendarObjectCollection, passwd: str
-) -> Generator[None]:
-    """Temporarily set password to `passwd`."""
-    client: DAVClient = elem.calendar.client
-    if client.username is None:
-        raise ValueError("No username set")
-    try:
-        client.password = passwd
-        client.auth = requests.auth.HTTPBasicAuth(client.username, client.password)
-        yield
-    finally:
-        remove_passwd(elem)
 
 
 def _typeguard_cache(
@@ -104,6 +73,14 @@ def _typeguard_cache(
             "Cache is not a dict[str, SynchronizableCalendarObjectCollection]"
         )
     return True
+
+
+class Config(TypedDict):
+    """Config file type."""
+
+    url: str
+    user: str
+    save_dir: str
 
 
 class CalendarCache(dict[str, SynchronizableCalendarObjectCollection]):
@@ -157,6 +134,29 @@ class CalendarCache(dict[str, SynchronizableCalendarObjectCollection]):
         logger.info(
             "Updated %s objects in %ss", n_updated, round(time.monotonic() - start, 2)
         )
+
+
+def remove_passwd(elem: SynchronizableCalendarObjectCollection) -> None:
+    """Remove password from `elem`."""
+    client: DAVClient = elem.calendar.client
+    client.auth = None
+    client.password = None
+
+
+@contextmanager
+def temp_passwd(
+    elem: SynchronizableCalendarObjectCollection, passwd: str
+) -> Generator[None]:
+    """Temporarily set password to `passwd`."""
+    client: DAVClient = elem.calendar.client
+    if client.username is None:
+        raise ValueError("No username set")
+    try:
+        client.password = passwd
+        client.auth = requests.auth.HTTPBasicAuth(client.username, client.password)
+        yield
+    finally:
+        remove_passwd(elem)
 
 
 def isalnum(c: str) -> bool:
@@ -217,6 +217,30 @@ def create_cache(url: str, user: str, passwd: str) -> CalendarCache:
     return CalendarCache(calendars)
 
 
+def update_cache(config: Config, passwd: str) -> None:
+    """Updates existing cache, else creates a new one."""
+    url, user, save_dir = config["url"], config["user"], config["save_dir"]
+    save_dir_path = Path(save_dir)
+    cache_path = save_dir_path / "cache.pkl"
+    logger.info("Cache path: %s", cache_path)
+
+    if not cache_path.exists():
+        logger.info("Creating cache...")
+        cache = create_cache(url, user, passwd)
+
+    else:
+        logger.info("Loading cache...")
+        cache = CalendarCache.load(cache_path)
+        cache.sync(passwd)
+
+    cache.save(cache_path)
+
+    start = time.monotonic()
+    for name, cal in cache.items():
+        write_calendar(name, cal, user, save_dir_path)
+    logger.info("Wrote calendars in %s seconds", round(time.monotonic() - start, 2))
+
+
 def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], str]:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
@@ -257,30 +281,6 @@ def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], st
         Path(value["save_dir"]).mkdir(exist_ok=True)
 
     return configs, passwd
-
-
-def update_cache(config: Config, passwd: str) -> None:
-    """Updates existing cache, else creates a new one."""
-    url, user, save_dir = config["url"], config["user"], config["save_dir"]
-    save_dir_path = Path(save_dir)
-    cache_path = save_dir_path / "cache.pkl"
-    logger.info("Cache path: %s", cache_path)
-
-    if not cache_path.exists():
-        logger.info("Creating cache...")
-        cache = create_cache(url, user, passwd)
-
-    else:
-        logger.info("Loading cache...")
-        cache = CalendarCache.load(cache_path)
-        cache.sync(passwd)
-
-    cache.save(cache_path)
-
-    start = time.monotonic()
-    for name, cal in cache.items():
-        write_calendar(name, cal, user, save_dir_path)
-    logger.info("Wrote calendars in %s seconds", round(time.monotonic() - start, 2))
 
 
 def main(argv: Sequence[str] | None = None) -> None:
