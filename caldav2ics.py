@@ -15,7 +15,7 @@ Example config (`config.toml`):
 ```toml
 url = "https://example.com/remote.php/dav/calendars/user/"
 user = "user"
-save_dir = "calendars"
+save-dir = "calendars"
 ```
 
 Usage:
@@ -75,12 +75,7 @@ def _typeguard_cache(
     return True
 
 
-class Config(TypedDict):
-    """Config file type."""
-
-    url: str
-    user: str
-    save_dir: str
+Config = TypedDict("Config", {"url": str, "user": str, "save-dir": str})
 
 
 class CalendarCache(dict[str, SynchronizableCalendarObjectCollection]):
@@ -219,7 +214,7 @@ def create_cache(url: str, user: str, passwd: str) -> CalendarCache:
 
 def update_cache(config: Config, passwd: str) -> None:
     """Updates existing cache, else creates a new one."""
-    url, user, save_dir = config["url"], config["user"], config["save_dir"]
+    url, user, save_dir = config["url"], config["user"], config["save-dir"]
     save_dir_path = Path(save_dir)
     cache_path = save_dir_path / "cache.pkl"
     logger.info("Cache path: %s", cache_path)
@@ -278,7 +273,7 @@ def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], st
         raise ValueError(f"Invalid config file: {e}") from e
 
     for value in configs.values():
-        save_dir_path = Path(value["save_dir"])
+        save_dir_path = Path(value["save-dir"])
         if not save_dir_path.is_absolute():
             raise ValueError("Save directory must be an absolute path")
         if save_dir_path.is_file():
@@ -303,3 +298,6 @@ def main(argv: Sequence[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+__all__ = ["main"]

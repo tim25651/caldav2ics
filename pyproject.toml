@@ -53,7 +53,7 @@ warn_unreachable = true
 exclude = ["build", "docs"]
 
 [tool.coverage.run]
-source = ["caldav2ics.py"]
+source = ["caldav2ics"]
 command_line = "-m pytest"
 branch = true
 
