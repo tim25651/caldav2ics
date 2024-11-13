@@ -43,14 +43,14 @@ import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict, TypeGuard
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import msgspec
 import requests
 from caldav.davclient import DAVClient
 from caldav.objects import SynchronizableCalendarObjectCollection
 from icalendar import Calendar, Event
-from typing_extensions import Self
+from typing_extensions import Self, TypeGuard
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Sequence
