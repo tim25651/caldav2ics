@@ -278,8 +278,12 @@ def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], st
         raise ValueError(f"Invalid config file: {e}") from e
 
     for value in configs.values():
-        Path(value["save_dir"]).mkdir(exist_ok=True)
-
+        save_dir_path = Path(value["save_dir"])
+        if not save_dir_path.is_absolute():
+            raise ValueError("Save directory must be an absolute path")
+        if save_dir_path.is_file():
+            raise ValueError("Save directory must be a directory or non existent")
+        save_dir_path.mkdir(parents=True, exist_ok=True)
     return configs, passwd
 
 
