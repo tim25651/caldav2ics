@@ -1,13 +1,3 @@
-# pyproject-tools
-
-# Put your content here
-
-# pyproject-tools
-
-# Nox
-.nox
-noxfile.py
-
 # Wheels
 *.whl
 

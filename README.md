@@ -5,7 +5,7 @@ A simple script to download all calendars from a CalDAV server and save them as 
 # Installation
 
 ```bash
-pip install .
+pip install caldav2ics
 ```
 
 # Usage
@@ -25,7 +25,7 @@ caldav2ics -c config.toml
 ```
 or without to be prompted for the password
 ```bash
-cat .password | caldav2ics -c config.toml
+C2I_PASSWORD=$(cat .password) caldav2ics -c config.toml
 ```
 
 # TODO

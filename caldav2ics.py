@@ -34,17 +34,17 @@ calendars/
 
 from __future__ import annotations
 
-import argparse
 import getpass
 import logging
+import os
 import pickle
 import string
-import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypedDict
 
+import doctyper
 import msgspec
 import requests.auth
 from caldav.davclient import DAVClient
@@ -53,28 +53,26 @@ from icalendar import Calendar, Event
 from typing_extensions import Self, TypeGuard
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Sequence
+    from collections.abc import Generator, Iterable
 
 
 logger = logging.getLogger(__name__)
 
+__version__ = "0.1.0"
 
-def _typeguard_cache(
-    cache: Any,
-) -> TypeGuard[dict[str, SynchronizableCalendarObjectCollection]]:
+
+def _typeguard_cache(cache: Any) -> TypeGuard[dict[str, SynchronizableCalendarObjectCollection]]:
     if not isinstance(cache, dict):
         raise TypeError("Cache is not a dict")
     if not all(
-        isinstance(key, str)
-        and isinstance(value, SynchronizableCalendarObjectCollection)
+        isinstance(key, str) and isinstance(value, SynchronizableCalendarObjectCollection)
         for key, value in cache.items()
     ):
-        raise TypeError(
-            "Cache is not a dict[str, SynchronizableCalendarObjectCollection]"
-        )
+        raise TypeError("Cache is not a dict[str, SynchronizableCalendarObjectCollection]")
     return True
 
 
+# must be functional to use hyphen as key
 Config = TypedDict("Config", {"url": str, "user": str, "save-dir": str})
 
 
@@ -126,9 +124,17 @@ class CalendarCache(dict[str, SynchronizableCalendarObjectCollection]):
                 updated = obj.sync()
             obj.objects = list(obj.objects)
             n_updated += len(updated[0])
-        logger.info(
-            "Updated %s objects in %ss", n_updated, round(time.monotonic() - start, 2)
-        )
+        logger.info("Updated %s objects in %ss", n_updated, round(time.monotonic() - start, 2))
+
+
+def get_passwd() -> str:
+    """Get password from environment variable or prompt for it."""
+    passwd = os.getenv("C2I_PASSWORD")
+    if not passwd:
+        passwd = getpass.getpass("Password: ")
+        if not passwd:
+            raise ValueError("Password not provided")
+    return passwd
 
 
 def remove_passwd(elem: SynchronizableCalendarObjectCollection) -> None:
@@ -139,9 +145,7 @@ def remove_passwd(elem: SynchronizableCalendarObjectCollection) -> None:
 
 
 @contextmanager
-def temp_passwd(
-    elem: SynchronizableCalendarObjectCollection, passwd: str
-) -> Generator[None]:
+def temp_passwd(elem: SynchronizableCalendarObjectCollection, passwd: str) -> Generator[None]:
     """Temporarily set password to `passwd`."""
     client: DAVClient = elem.calendar.client
     if client.username is None:
@@ -236,39 +240,17 @@ def update_cache(config: Config, passwd: str) -> None:
     logger.info("Wrote calendars in %s seconds", round(time.monotonic() - start, 2))
 
 
-def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], str]:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "config",
-        type=Path,
-        help="Path to config file, containing blocks with url, user, and save-dir.",
-    )
-    parser.add_argument(
-        "-s",
-        "--stdin",
-        action="store_true",
-        help="Read password from stdin. If not provided, will prompt for password.",
-        default=False,
-    )
-    args = parser.parse_args(argv)
-    config_path: Path = args.config
+def sync(config_file: Path) -> None:
+    """Sync the calendar with the server.
 
-    if args.stdin:
-        # remove the newline character
-        # don't strip as spaces could be part of the password
-        passwd = sys.stdin.read().removesuffix("\n")
-    else:
-        passwd = getpass.getpass("Password: ")
-        if not passwd:
-            raise ValueError("Password not provided")
+    Args:
+        config_file: The path to the config file.
+    """
+    logging.basicConfig(level=logging.INFO)
 
     try:
-        content = config_path.read_bytes()
-        unvalidated = msgspec.toml.decode(content)
-        configs = msgspec.convert(unvalidated, dict[str, Config])
+        content = msgspec.toml.decode(config_file.read_bytes())
+        configs = msgspec.convert(content, dict[str, Config])
     except (FileNotFoundError, msgspec.ValidationError) as e:
         raise ValueError(f"Invalid config file: {e}") from e
 
@@ -279,25 +261,21 @@ def parse_args(argv: Sequence[str] | None = None) -> tuple[dict[str, Config], st
         if save_dir_path.is_file():
             raise ValueError("Save directory must be a directory or non existent")
         save_dir_path.mkdir(parents=True, exist_ok=True)
-    return configs, passwd
 
+    passwd = get_passwd()
 
-def main(argv: Sequence[str] | None = None) -> None:
-    """Main entrypoint."""
-    logging.basicConfig(level=logging.INFO)
-
-    config, passwd = parse_args(argv)
-
-    for server, conf in config.items():
+    for server, conf in configs.items():
         start = time.monotonic()
         update_cache(conf, passwd)
-        logger.info(
-            "Finished %s in %s seconds", server, round(time.monotonic() - start, 2)
-        )
+        logger.info("Finished %s in %s seconds", server, round(time.monotonic() - start, 2))
+
+
+def cli() -> None:  # pragma: no cover
+    """CLI entry point."""
+    app = doctyper.SlimTyper(help=__doc__)
+    app.command("sync")(sync)
+    app()
 
 
 if __name__ == "__main__":
-    main()
-
-
-__all__ = ["main"]
+    cli()

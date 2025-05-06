@@ -1,63 +1,64 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
-
-# pyproject-tools
 
 [project]
 name = "caldav2ics"
-version = "0.0.1"
-dependencies = [
-    "caldav",
-    "icalendar",
-    "msgspec",
-    "tomli_w",
-    "typing_extensions",
-]
+dynamic = ["version"]
+dependencies = ["caldav", "icalendar", "msgspec[toml]", "typing-extensions"]
 requires-python = ">=3.9"
-authors = [
-    {name = "Tim Hörmann", email = "pypi@audivir.de"},
-]
+authors = [{ name = "Tim Hörmann", email = "pypi@audivir.de" }]
 description = "Cache CalDAV calendars in static .ICS files."
 readme = "README.md"
-classifiers = [
-    "Development Status :: 1 - Planning",
-    "Private :: Do Not Upload",
-    "Programming Language :: Python :: 3",
-]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = ["Programming Language :: Python :: 3"]
+
+[project.urls]
+Homepage = "https://github.com/audivir/caldav2ics"
+Repository = "https://github.com/audivir/caldav2ics"
 
 [project.optional-dependencies]
-dev = ["coverage[toml]", "mypy", "pylint", "pytest"]
+dev = ["ruff", "mypy", "pytest", "coverage[toml]", "vulture"]
 
 [project.scripts]
-caldav2ics = "caldav2ics:main"
+caldav2ics = "caldav2ics:cli"
 
 [tool.setuptools]
-py-modules = ["caldav2ics"]
-
-# pyproject-tools
+dynamic = { version = { attr = "caldav2ics.__version__" } }
 
 [tool.mypy]
 python_version = "3.9"
-enable_error_code = """type-arg,no-untyped-def,redundant-cast,redundant-self,comparison-overlap,
-                    no-untyped-call,no-any-return,no-any-unimported,unreachable,redundant-expr,
-                    possibly-undefined,truthy-bool,truthy-iterable,ignore-without-code,
-                    unused-awaitable,unused-ignore,explicit-override,unimported-reveal"""
+strict = true
 disable_error_code = "import-untyped"
+enable_error_code = """type-arg,no-untyped-def,redundant-cast,redundant-self,comparison-overlap,
+                    no-untyped-call,no-any-return,no-any-unimported,unreachable,deprecated,redundant-expr,
+                    possibly-undefined,truthy-bool,truthy-iterable,ignore-without-code,
+                    unused-awaitable,unused-ignore,explicit-override,unimported-reveal,mutable-override,unimported-reveal,explicit-any"""
+
+# untyped definitions and calls
 disallow_untyped_calls = true
 disallow_untyped_defs = true
-warn_unused_ignores = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# configuring warnings
 warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
 warn_return_any = true
 warn_unreachable = true
+
 exclude = ["build", "docs"]
 
 [tool.coverage.run]
-source = ["caldav2ics"]
+source = ["tests", "caldav2ics"]
 command_line = "-m pytest"
 branch = true
 
 [tool.coverage.report]
+omit = ["_types.py"]
 exclude_also = ["if TYPE_CHECKING:", 'if __name__ == "__main__":']
 fail_under = 100
 show_missing = true
@@ -76,7 +77,7 @@ testpaths = ["tests"]
 
 [tool.vulture]
 ignore_names = ["_*", "unused_*"]
-paths = [".whitelist", "caldav2ics.py"]
+paths = ["tests", ".whitelist", "caldav2ics.py"]
 make_whitelist = true
 sort_by_size = true
 verbose = false
@@ -88,7 +89,7 @@ show-fixes = true
 exclude = [".git", ".idea", ".mypy_cache", ".tox", ".venv", ".nox"]
 
 target-version = "py39"
-line-length = 88
+line-length = 100
 indent-width = 4
 
 [tool.ruff.format]
@@ -109,7 +110,7 @@ ignore = [
   # ALLOW PICKLE USE
   "S301", # `pickle` and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue
   # IGNORE TODO
-  "TD002",  # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
+  # "TD002",  # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
   "TD003",  # Missing issue link on the line following this TODO
   "FIX002", # Line contains TODO, consider resolving the issue
   "FBT001", # Boolean-typed positional argument in function definition
